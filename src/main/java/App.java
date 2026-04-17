@@ -1,50 +1,40 @@
-import java.util.HashMap;
-import java.util.Map;
+import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpExchange;
 import java.io.*;
+import java.net.InetSocketAddress;
+import java.util.*;
 
 public class App {
-    // The path where the data will be stored inside the Kubernetes volume
     private static final String FILE_PATH = "/data/inventory.txt";
 
-    public static void main(String[] args) {
-        Map<String, Integer> inventory = loadInventory();
+    public static void main(String[] args) throws IOException {
+        // Create a server on port 8080 (matches your Docker/K8s config)
+        HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+        
+        server.createContext("/", new HttpHandler() {
+            @Override
+            public void handle(HttpExchange exchange) throws IOException {
+                Map<String, Integer> inventory = loadInventory();
+                
+                // Update inventory logic
+                inventory.put("Sensors", 100);
+                saveInventory(inventory);
 
-        // Sample Input (In a real app, this comes from a request)
-        String itemName = "Sensors";
-        int quantity = 100;
-
-        // Version 3 Logic: Update and then Save to Disk
-        inventory.put(itemName, quantity);
-        saveInventory(inventory);
-
-        System.out.println("V3: Data saved to persistent storage.");
-        System.out.println("Current Inventory: " + inventory);
-    }
-
-    private static void saveInventory(Map<String, Integer> inventory) {
-        try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_PATH))) {
-            for (Map.Entry<String, Integer> entry : inventory.entrySet()) {
-                writer.println(entry.getKey() + ":" + entry.getValue());
+                String response = "<h1>Inventory V3</h1><p>Data saved: " + inventory + "</p>";
+                exchange.sendResponseHeaders(200, response.length());
+                OutputStream os = exchange.getResponseBody();
+                os.write(response.getBytes());
+                os.close();
             }
-        } catch (IOException e) {
-            System.out.println("Error saving data: " + e.getMessage());
-        }
+        });
+
+        System.out.println("Server started on port 8080...");
+        server.setExecutor(null); 
+        server.start();
     }
 
-    private static Map<String, Integer> loadInventory() {
-        Map<String, Integer> inventory = new HashMap<>();
-        File file = new File(FILE_PATH);
-        if (!file.exists()) return inventory;
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(":");
-                inventory.put(parts[0], Integer.parseInt(parts[1]));
-            }
-        } catch (IOException e) {
-            System.out.println("Error loading data.");
-        }
-        return inventory;
-    }
+    // Keep your loadInventory and saveInventory methods exactly as they were below...
+    private static void saveInventory(Map<String, Integer> inventory) { /* same as before */ }
+    private static Map<String, Integer> loadInventory() { /* same as before */ }
 }
