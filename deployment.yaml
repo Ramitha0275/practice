@@ -14,10 +14,17 @@ spec:
     spec:
       containers:
       - name: practice-app
-        # Make sure this matches exactly what you pushed to Docker Hub!
-        image: ramithas/practice:v1 
+        image: ramithas/practice:v1
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
+        volumeMounts:
+        - name: storage-volume
+          mountPath: /data    # This matches your App.java FILE_PATH
+      volumes:
+      - name: storage-volume
+        hostPath:
+          path: /mnt/data     # Creates a folder on your computer to keep the data
 ---
 apiVersion: v1
 kind: Service
@@ -30,5 +37,4 @@ spec:
   ports:
     - port: 80
       targetPort: 8080
-      # Changed to 30001 as standard K8s NodePort range is 30000-32767
       nodePort: 30007
